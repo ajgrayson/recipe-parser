@@ -1,4 +1,4 @@
-# recipe-ingredient-parser-v3
+# recipe-parser
 
 Natural language parser for recipes and lists of ingredients. Can parse a string into an object and also combine an array of these ingredient objects.
 
@@ -14,11 +14,11 @@ What's different from the original?
 
 ## To install
 
-`npm install recipe-ingredient-parser-v3` or `yarn add recipe-ingredient-parser-v3`
+`npm install recipe-parser` or `yarn add recipe-parser`
 
 ## To use
 
-`import { parse } from 'recipe-ingredient-parser-v3';`
+`import { parse } from 'recipe-parser';`
 
 And then use on a string, for example:
 `parse('1 teaspoon basil', 'eng');`
