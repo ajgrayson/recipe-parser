@@ -1,7 +1,7 @@
 import * as convert from './convert';
-import { unitsMap} from './units';
+import { unitsMap } from './units';
 import { repeatingFractions } from './repeatingFractions';
-import {toTasteMap} from './numbers';
+import { toTasteMap } from './numbers';
 
 //import * as Natural from 'natural';
 
@@ -15,69 +15,75 @@ export interface Ingredient {
   maxQty: string | null;
 }
 
-export function toTasteRecognize(input: string, language: string){
+export function toTasteRecognize(input: string, language: string) {
   const toTaste = toTasteMap[language]
   const firstLetter = toTaste.match(/\b(\w)/g);
   //componing first two word
   //const word = firstWord.concat(' ').concat(secondWord)
-  
-  if(firstLetter){
+
+  if (firstLetter) {
     //checking the extended version
     let regEx = new RegExp(toTaste, 'gi')
-    if(input.match(regEx)){
-      return [(firstLetter.join('.') +'.').toLocaleLowerCase(), convert.getFirstMatch(input, regEx), true]  as [string, string, boolean]
+    if (input.match(regEx)) {
+      return [(firstLetter.join('.') + '.').toLocaleLowerCase(), convert.getFirstMatch(input, regEx), true] as [string, string, boolean]
     }
-    const regExString = firstLetter.join('[.]?') +'[.]?'
+    const regExString = firstLetter.join('[.]?') + '[.]?'
     regEx = new RegExp(regExString, 'gi')
     //const a = input.toString().split(/[\s-]+/);
-    if(input.match(regEx)){
-      return [(firstLetter.join('.') +'.').toLocaleLowerCase(), convert.getFirstMatch(input, regEx), false] as [string, string, boolean]
+    if (input.match(regEx)) {
+      return [(firstLetter.join('.') + '.').toLocaleLowerCase(), convert.getFirstMatch(input, regEx), false] as [string, string, boolean]
     }
   }
-  return ['', '', false]  as [string, string, boolean]
+  return ['', '', false] as [string, string, boolean]
 }
 
 function getUnit(input: string, language: string) {
- // const word = input.concat(' ').concat(secondWord)
+  console.log('input:', input)
+  // const word = input.concat(' ').concat(secondWord)
   let unit = unitsMap.get(language)
   let units = unit[0];
   let pluralUnits = unit[1];
   let symbolUnits = unit[3]
   let response = [] as string[];
-  const [toTaste, match, extFlag] = toTasteRecognize(input, language)
-  if(toTaste) {
-    if (extFlag){
-      response = [toTaste, toTaste, match];
-    }
-    else
-    {
-      response = [toTaste, toTaste, match];
-    }
+  const [toTaste, match] = toTasteRecognize(input, language)
+  if (toTaste) {
+    response = [toTaste, toTaste, match];
   }
-  else
-  {
+  else {
     if (units[input] || pluralUnits[input]) {
-
-      response =  [input, pluralUnits[input], input ];
+      response = [input, pluralUnits[input], input];
     }
+    let matched = false;
     for (const unit of Object.keys(units)) {
-      for (const shorthand of units[unit]) {
-        const regex = new RegExp('(?=\\b'+shorthand+'\\b)', 'gi')
-        if (input.match(regex)) {
+      if (matched) break;
+      for (let shorthand of units[unit]) {
+        let caseSensitivity = 'i';
+        if (shorthand.indexOf(':s') > 0) {
+          caseSensitivity = '';
+          shorthand = shorthand.replace(':s', '');
+        }
+        shorthand = shorthand.replace('.', '\.');
+        const regex = new RegExp('(?=\\b' + shorthand + '\\b)', `g${caseSensitivity}`)
+        let match = input.match(regex);
+        if (match) {
           response = [unit, pluralUnits[unit], shorthand];
+          matched = true;
+          break;
         }
       }
     }
     for (const pluralUnit of Object.keys(pluralUnits)) {
-      const regex = new RegExp('(?=\\b'+pluralUnits[pluralUnit]+'\\b)', 'gi')
+      let caseSensitivity = pluralUnits[pluralUnit].indexOf(':s') > 0 ? '' : 'i';
+      const regex = new RegExp('(?=\\b' + pluralUnits[pluralUnit] + '\\b)', `g${caseSensitivity}`)
       if (input.match(regex)) {
+        // console.log('c', input, 're', regex)
         response = [pluralUnit, pluralUnits[pluralUnit], pluralUnits[pluralUnit]];
       }
-    }  
+    }
   }
   let symbol = symbolUnits[response[0]]
   response.splice(2, 0, symbol)
-  
+
   return response
 }
 
@@ -87,17 +93,25 @@ function getPreposition(input: string, language: string) {
   let prepositionMap = unitsMap.get(language)
   let prepositions = prepositionMap[2];
   for (const preposition of prepositions) {
-      let regex = new RegExp('^' + preposition )
-      if (convert.getFirstMatch(input, regex)) 
-        return preposition;
-      
+    let regex = new RegExp('^' + preposition)
+    if (convert.getFirstMatch(input, regex))
+      return preposition;
+
   }
- 
+
   return null;
 }
 
 export function parse(recipeString: string, language: string) {
-  const ingredientLine = recipeString.trim(); // removes leading and trailing whitespace
+  let ingredientLine = recipeString.trim(); // removes leading and trailing whitespace
+  if (ingredientLine.match(/\d+\.*\/*\d*\-[a-z]+/gi)) {
+    let matches = /\d+\.*\/*\d*\-[a-z]+/gi.exec(ingredientLine);
+    if (matches && matches.length > 0) {
+      ingredientLine = ingredientLine.replace(matches[0], `(${matches[0].replace('-', ' ')}`)
+    }
+  }
+
+  console.log('ingredientLine:', ingredientLine)
 
   /* restOfIngredient represents rest of ingredient line.
   For example: "1 pinch salt" --> quantity: 1, restOfIngredient: pinch salt */
@@ -113,17 +127,18 @@ export function parse(recipeString: string, language: string) {
   }
   // grab unit and turn it into non-plural version, for ex: "Tablespoons" OR "Tsbp." --> "tablespoon"
   let [unit, unitPlural, symbol, originalUnit] = getUnit(restOfIngredient, language) as string[]
+  console.log(unit, unitPlural, symbol, originalUnit);
   // remove unit from the ingredient if one was found and trim leading and trailing whitespace
-  
+
   let ingredient = !!originalUnit ? restOfIngredient.replace(originalUnit, '').trim() : restOfIngredient.replace(unit, '').trim();
-  ingredient=ingredient.split('.').join("").trim()
+  ingredient = ingredient.split('.').join("").trim()
   let preposition = getPreposition(ingredient.split(' ')[0], language)
 
-  if(preposition) {
+  if (preposition) {
     let regex = new RegExp('^' + preposition)
-    ingredient = ingredient.replace(regex,'').trim()
+    ingredient = ingredient.replace(regex, '').trim()
   }
-  
+
   let minQty = quantity; // default to quantity
   let maxQty = quantity; // default to quantity
 
@@ -131,16 +146,16 @@ export function parse(recipeString: string, language: string) {
   if (quantity && quantity.includes('-')) {
     [minQty, maxQty] = quantity.split('-');
   }
-  if ((!quantity || quantity == '0') && !unit){
-      unit ='q.b.'
-      unitPlural='q.b.'
-  }
+  // if ((!quantity || quantity == '0') && !unit){
+  //     unit ='q.b.'
+  //     unitPlural='q.b.'
+  // }
   return {
     quantity: +quantity,
     unit: !!unit ? unit : null,
     unitPlural: !!unitPlural ? unitPlural : null,
     symbol: !!symbol ? symbol : null,
-    ingredient: extraInfo ? `${ingredient} ${extraInfo}` : ingredient.replace(/( )*\.( )*/g,''),
+    ingredient: extraInfo ? `${ingredient} ${extraInfo}` : ingredient.replace(/( )*\.( )*/g, ''),
     minQty: +minQty,
     maxQty: +maxQty,
   };
@@ -191,9 +206,9 @@ export function prettyPrintingPress(ingredient: Ingredient) {
 
       quantity += quantity ? ' ' + fractional : fractional;
     }
-   /* if (((+whole !== 0 && typeof remainder !== 'undefined') || +whole > 1) && unit) {
-      unit = nounInflector.pluralize(unit);
-    }*/
+    /* if (((+whole !== 0 && typeof remainder !== 'undefined') || +whole > 1) && unit) {
+       unit = nounInflector.pluralize(unit);
+     }*/
   } else {
     return ingredient.ingredient;
   }
