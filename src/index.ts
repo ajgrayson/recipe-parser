@@ -38,8 +38,6 @@ export function toTasteRecognize(input: string, language: string) {
 }
 
 function getUnit(input: string, language: string) {
-  console.log('input:', input)
-  // const word = input.concat(' ').concat(secondWord)
   let unit = unitsMap.get(language)
   let units = unit[0];
   let pluralUnits = unit[1];
@@ -62,7 +60,7 @@ function getUnit(input: string, language: string) {
           caseSensitivity = '';
           shorthand = shorthand.replace(':s', '');
         }
-        shorthand = shorthand.replace('.', '\.');
+        shorthand = shorthand.replace(/\./g, '\\.');
         const regex = new RegExp('(?=\\b' + shorthand + '\\b)', `g${caseSensitivity}`)
         let match = input.match(regex);
         if (match) {
@@ -87,6 +85,36 @@ function getUnit(input: string, language: string) {
   return response
 }
 
+// function findUnitMatches(input: string, language: string) {
+//   // console.log('input:', input)
+//   // const word = input.concat(' ').concat(secondWord)
+//   let unit = unitsMap.get(language)
+//   let units = unit[0];
+
+//   let inputVal = input;
+//   let matches = [];
+//   let from = 0;
+//   for (const unit of Object.keys(units)) {
+//     for (let shorthand of units[unit]) {
+//       let caseSensitivity = 'i';
+//       if (shorthand.indexOf(':s') > 0) {
+//         caseSensitivity = '';
+//         shorthand = shorthand.replace(':s', '');
+//       }
+//       shorthand = shorthand.replace(/\./, '\\.');
+//       const regex = new RegExp('(?=\\b' + shorthand + '\\b)', `g${caseSensitivity}`)
+//       let match = input.match(regex);
+//       if (match) {
+//         console.log('input', input, 'match', match, 'shorthand', shorthand, 'regex', regex)
+//         matches.push(shorthand);
+//         from = inputVal.indexOf(shorthand) + shorthand.length;
+//         inputVal = inputVal.substr(from, inputVal.length - from)
+//       }
+//     }
+//   }
+//   return matches;
+// }
+
 /* return the proposition if it's used before of the name of
 the ingredient */
 function getPreposition(input: string, language: string) {
@@ -107,11 +135,20 @@ export function parse(recipeString: string, language: string) {
   if (ingredientLine.match(/\d+\.*\/*\d*\-[a-z]+/gi)) {
     let matches = /\d+\.*\/*\d*\-[a-z]+/gi.exec(ingredientLine);
     if (matches && matches.length > 0) {
-      ingredientLine = ingredientLine.replace(matches[0], `(${matches[0].replace('-', ' ')}`)
+      ingredientLine = ingredientLine.replace(matches[0], `(${matches[0].replace('-', ' ')})`)
     }
   }
 
-  console.log('ingredientLine:', ingredientLine)
+  // console.log('ingredientLine:', ingredientLine)
+  // let matches = findUnitMatches(ingredientLine, language);
+  // // console.log('matches', matches)
+  // if (matches.length > 1) {
+  //   let matches3 = /\d+\s+\.*[a-z]+/gi.exec(ingredientLine);
+  //   if (matches3 && matches3.length > 0 && ingredientLine.substr(ingredientLine.indexOf(matches3[0]) - 1, 1) !== '(') {
+  //     ingredientLine = ingredientLine.replace(matches3[0], `(${matches3[0]}`)
+  //   }
+  // }
+  // console.log('ingredientLine2:', ingredientLine)
 
   /* restOfIngredient represents rest of ingredient line.
   For example: "1 pinch salt" --> quantity: 1, restOfIngredient: pinch salt */
